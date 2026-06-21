@@ -1,13 +1,13 @@
-// src/gi/ddgi.js  — M1 (파이프라인 검증)
+// src/gi/ddgi.js  — M2 (SDF 레이마칭: 프로브가 아래 방향으로 씬을 1회 샘플)
 // =============================================================================
-// DDGI 레이어 (게임을 절대 깨지 않는 additive 레이어)
-//  - [B] 프로브 그리드 시각화: 항상 동작. G키 토글.
-//  - [C-M1] 프로브 SH 버퍼 생성 + 컴퓨트가 "위치 기반 그라데이션 색"을 SH0에 기록
-//           → 디버그 점 색에 반영. 점들이 무지개처럼 인덱스순 그라데이션이면 M1 통과.
-//  - 다음: M2(SDF 레이마칭으로 실제 씬 색), M3(다방향 SH 누적 + 시간 수렴).
+// [M1] 파이프라인 ✓  →  [M2] 아래로 광선 + 박스 SDF 교차 → 그 면의 색 ←지금
+//      [M3] 다방향 SF 샘플 + SH 누적 + 시간 수렴 + 칠한 색 반영
 //
-// SH 표현: per-probe 4계수(L1) × RGB. 버퍼 = 프로브당 vec3 4개 연속.
-//   slot = probe*SH_COEFFS + c   (c: 0=DC, 1..3=L1)
+// M2 합격(디버그 색은 검증용으로 일부러 구분되게):
+//   · 두 바닥(platA/B) 위 프로브 → 초록
+//   · 가운데 틈(z:-2..2) 위 프로브 → 어두움(아무것도 못 맞힘)
+//   · 패널 바로 위 프로브 → 빨강
+// (M3에서 실제 알베도/다방향/누적으로 교체)
 // =============================================================================
 
 import * as THREE from 'three/webgpu';
@@ -15,24 +15,22 @@ import { Fn, instancedArray, instanceIndex, vec3, float } from 'three/tsl';
 
 const GRID = { nx: 7, ny: 4, nz: 7 };
 const AREA = { min: new THREE.Vector3(-8, 0.4, -8), max: new THREE.Vector3(8, 5.4, 8) };
-const SH_COEFFS = 4; // L1
+const SH_COEFFS = 4;
+
+// 씬 박스(AABB) + M2 검증용 색.  [cx,cy,cz, hx,hy,hz, r,g,b]
+const BOXES = [
+  [0, -0.25, -5.5,  9, 0.25, 3.5,  0.2, 0.8, 0.3],  // 바닥 A  → 초록
+  [0, -0.25,  5.5,  9, 0.25, 3.5,  0.2, 0.8, 0.3],  // 바닥 B  → 초록
+  [0,  1.6,   2.0,  3, 1.5,  0.15, 0.9, 0.2, 0.2],  // 패널    → 빨강
+];
 
 export class DDGI {
   constructor(renderer, scene, camera, { enabled = false } = {}) {
-    this.renderer = renderer;
-    this.scene = scene;
-    this.camera = camera;
-    this.enabled = enabled;
-    this.dirty = true;
-    this.probePositions = [];
-    this.probeCount = 0;
-    this.debugMesh = null;
-    this.debugMaterial = null;
-    this.debugVisible = false;
-
-    this.shBuffer = null;       // instancedArray: probeCount*SH_COEFFS vec3
-    this.computeUpdate = null;  // 컴퓨트 노드
-    this.giReady = false;
+    this.renderer = renderer; this.scene = scene; this.camera = camera;
+    this.enabled = enabled; this.dirty = true;
+    this.probePositions = []; this.probeCount = 0;
+    this.debugMesh = null; this.debugMaterial = null; this.debugVisible = false;
+    this.shBuffer = null; this.computeUpdate = null; this.giReady = false;
 
     document.addEventListener('keydown', (e) => {
       if (e.code === 'KeyG' && this.debugMesh) {
@@ -44,29 +42,21 @@ export class DDGI {
 
   async init() {
     this._buildProbeGrid();
-    this._addDebugProbes();          // debugMaterial 생성됨
-
-    if (!this.enabled) {
-      console.info('[DDGI] WebGPU 미지원 — 프로브 시각화만(컴퓨트 GI 비활성).');
-      return;
-    }
-
+    this._addDebugProbes();
+    if (!this.enabled) { console.info('[DDGI] WebGPU 미지원 — 시각화만.'); return; }
     try {
-      this._initGIBuffers();         // SH 버퍼 + 컴퓨트 노드 + 디버그 색 주입
-      await this.renderer.computeAsync(this.computeUpdate); // M1: 1회만 실행
+      this._initGIBuffers();
+      await this.renderer.computeAsync(this.computeUpdate);
       this.giReady = true;
-      console.info(`[DDGI] M1 OK — probes=${this.probeCount}, SH slots=${this.probeCount * SH_COEFFS}.`);
+      console.info(`[DDGI] M2 OK — probes=${this.probeCount}, boxes=${BOXES.length}.`);
     } catch (err) {
       this.giReady = false;
-      console.error('[DDGI] M1 init 실패 — GI off, 게임은 계속:', err);
+      console.error('[DDGI] M2 init 실패 — GI off, 게임은 계속:', err);
     }
   }
 
   markDirty() { this.dirty = true; }
-
-  update(/* dt */) {
-    // M1은 정적 테스트라 매 프레임 갱신 불필요. (M3에서 라운드로빈+누적 도입)
-  }
+  update() { /* M2 정적 */ }
 
   _buildProbeGrid() {
     this.probePositions.length = 0;
@@ -88,25 +78,65 @@ export class DDGI {
 
   _initGIBuffers() {
     const count = this.probeCount;
-    this.shBuffer = instancedArray(count * SH_COEFFS, 'vec3');
     const SHC = SH_COEFFS;
-    const COUNT_F = float(count);
+    this.shBuffer = instancedArray(count * SHC, 'vec3');
+    const shBuf = this.shBuffer;
 
-    // [M1 컴퓨트] 프로브당 1스레드. 인덱스 기반 그라데이션 색을 DC(SH0)에 기록.
+    const { nx: NX, ny: NY, nz: NZ } = GRID;
+    const MIN = AREA.min, MAX = AREA.max;
+
+    // 박스 슬랩 교차(노드 식): 진입 t>eps 반환, 없으면 1e9
+    const boxHit = (ro, rd, c, h) => {
+      const inv = vec3(1.0).div(rd);
+      const t1 = c.sub(h).sub(ro).mul(inv);
+      const t2 = c.add(h).sub(ro).mul(inv);
+      const tmin = t1.min(t2), tmax = t1.max(t2);
+      const tn = tmin.x.max(tmin.y).max(tmin.z);
+      const tf = tmax.x.min(tmax.y).min(tmax.z);
+      const hit = tf.greaterThanEqual(tn).and(tf.greaterThan(0.001));
+      const t = tn.greaterThan(0.001).select(tn, tf);
+      return hit.select(t, float(1e9));
+    };
+
     this.computeUpdate = Fn(() => {
-      const p = instanceIndex;                  // 0..count-1
-      const base = p.mul(SHC);                   // 이 프로브의 첫 슬롯
-      const t = p.toFloat().div(COUNT_F);        // 0..1 그라데이션
-      const col = vec3(t, t.oneMinus(), float(0.6));
+      // 프로브 인덱스 → (ix,iy,iz)  (float floor 분해: 정수나눗셈 이슈 회피)
+      const pf = instanceIndex.toFloat();
+      const ix = pf.div(NY * NZ).floor();
+      const rem = pf.sub(ix.mul(NY * NZ));
+      const iy = rem.div(NZ).floor();
+      const iz = rem.sub(iy.mul(NZ));
+      const fx = ix.div(Math.max(1, NX - 1));
+      const fy = iy.div(Math.max(1, NY - 1));
+      const fz = iz.div(Math.max(1, NZ - 1));
+      const ro = vec3(
+        float(MIN.x).add(fx.mul(MAX.x - MIN.x)),
+        float(MIN.y).add(fy.mul(MAX.y - MIN.y)),
+        float(MIN.z).add(fz.mul(MAX.z - MIN.z)),
+      );
 
-      this.shBuffer.element(base).assign(col);          // DC = 색
-      this.shBuffer.element(base.add(1)).assign(vec3(0)); // L1 = 0
-      this.shBuffer.element(base.add(2)).assign(vec3(0));
-      this.shBuffer.element(base.add(3)).assign(vec3(0));
+      // 거의 수직 아래 광선(0 성분 NaN 회피용으로 x,z 살짝)
+      const rd = vec3(0.0001, -1.0, 0.0001);
+
+      const bestT = float(1e9).toVar();
+      const albedo = vec3(0.05, 0.05, 0.07).toVar(); // 미스 = 어두움
+
+      for (const B of BOXES) {
+        const c = vec3(B[0], B[1], B[2]);
+        const h = vec3(B[3], B[4], B[5]);
+        const t = boxHit(ro, rd, c, h);
+        const closer = t.lessThan(bestT);
+        albedo.assign(closer.select(vec3(B[6], B[7], B[8]), albedo));
+        bestT.assign(t.min(bestT));
+      }
+
+      const base = instanceIndex.mul(SHC);
+      shBuf.element(base).assign(albedo);
+      shBuf.element(base.add(1)).assign(vec3(0));
+      shBuf.element(base.add(2)).assign(vec3(0));
+      shBuf.element(base.add(3)).assign(vec3(0));
     })().compute(count);
 
-    // 디버그 점 색 = 해당 프로브의 SH0 (instanceIndex = 프로브 인덱스)
-    this.debugMaterial.colorNode = this.shBuffer.element(instanceIndex.mul(SHC));
+    this.debugMaterial.colorNode = shBuf.element(instanceIndex.mul(SHC));
   }
 
   _addDebugProbes() {
