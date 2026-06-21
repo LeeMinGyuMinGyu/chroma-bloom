@@ -26,9 +26,9 @@ async function start() {
   const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 300);
 
   // --- 라이팅(낮춰서 GI 간접광이 보일 여유 확보) ---
-  scene.add(new THREE.AmbientLight('#fff6ee', 0.5));
-  scene.add(new THREE.HemisphereLight('#eaf0ff', '#2c2838', 0.7));
-  const sun = new THREE.DirectionalLight('#fff4e6', 1.4);
+  scene.add(new THREE.AmbientLight('#fff6ee', 0.28));
+  scene.add(new THREE.HemisphereLight('#eaf0ff', '#2c2838', 0.45));
+  const sun = new THREE.DirectionalLight('#fff4e6', 1.05);
   sun.position.set(4, 8, 2); scene.add(sun);
 
   // --- 플레이어 / 칠하기 ---
