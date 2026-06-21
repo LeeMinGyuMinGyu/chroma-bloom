@@ -42,7 +42,7 @@ export class DDGI {
     this.dirty = true;
     this.probePositions = [];
     this.debugMesh = null;
-    this.debugVisible = true;
+    this.debugVisible = false;    // 기본 OFF — G로 켜서 캡쳐
 
     // G 키: 프로브 그리드 시각화 토글 (리포트 On/Off 캡쳐용)
     document.addEventListener('keydown', (e) => {
