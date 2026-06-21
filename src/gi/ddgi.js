@@ -11,13 +11,13 @@
 import * as THREE from 'three/webgpu';
 import { Fn, instancedArray, storage, instanceIndex, vec3, float, Loop, uniform, positionWorld } from 'three/tsl';
 
-const GRID = { nx: 12, ny: 7, nz: 12 };
+const GRID = { nx: 14, ny: 8, nz: 14 };
 const AREA = { min: new THREE.Vector3(-8, 0.4, -8), max: new THREE.Vector3(8, 5.4, 8) };
 const SH_COEFFS = 4;
 const NUM_RAYS = 16;
 const ALPHA = 0.04;
 const RAY_MAX = 40.0;
-const INJECT_STRENGTH = 1.3; // 간접광 주입 세기(흰 방이라 약하게 시작)
+const INJECT_STRENGTH = 1.8; // 간접광 주입 세기(흰 방이라 약하게 시작)
 
 // [cx,cy,cz, hx,hy,hz, r,g,b, isPanel]
 const BOXES = [
@@ -220,7 +220,9 @@ export class DDGI {
     const gy = positionWorld.y.sub(MIN.y).div(celly).clamp(0.0, NY - 1 - 1e-3);
     const gz = positionWorld.z.sub(MIN.z).div(cellz).clamp(0.0, NZ - 1 - 1e-3);
     const i0x = gx.floor(), i0y = gy.floor(), i0z = gz.floor();
-    const fx = gx.sub(i0x), fy = gy.sub(i0y), fz = gz.sub(i0z);
+    // smoothstep(t)=t*t*(3-2t) — 프로브 사이 전환을 곡선화 → 네모 격자무늬 완화
+    const ss = (t) => t.mul(t).mul(float(3.0).sub(t.mul(2.0)));
+    const fx = ss(gx.sub(i0x)), fy = ss(gy.sub(i0y)), fz = ss(gz.sub(i0z));
     const i1x = i0x.add(1.0), i1y = i0y.add(1.0), i1z = i0z.add(1.0);
 
     const c000 = dcAt(i0x, i0y, i0z), c100 = dcAt(i1x, i0y, i0z);
