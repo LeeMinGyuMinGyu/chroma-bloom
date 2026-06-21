@@ -23,9 +23,9 @@ async function start() {
   const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 300);
 
   // --- 라이팅: 흰 룸이 또렷이 보이도록(검은 화면 방지). Ambient를 충분히. ---
-  scene.add(new THREE.AmbientLight('#ffffff', 1.0));                 // 모든 면 기본 밝기 보장
-  scene.add(new THREE.HemisphereLight('#eaf0ff', '#3a3640', 1.4));   // 부드러운 채움
-  const sun = new THREE.DirectionalLight('#fff4e6', 1.6);
+  scene.add(new THREE.AmbientLight('#ffffff', 0.35));                // 낮춤 → GI 간접광이 보일 여유 확보
+  scene.add(new THREE.HemisphereLight('#eaf0ff', '#3a3640', 0.55));  // 부드러운 채움(낮춤)
+  const sun = new THREE.DirectionalLight('#fff4e6', 1.1);
   sun.position.set(4, 8, 2); scene.add(sun);
 
   // --- 방 / 플레이어 / 칠하기 ---
@@ -38,7 +38,8 @@ async function start() {
   const gi = new DDGI(renderer, scene, camera, { enabled: hasWebGPU });
   await gi.init();
 
-  paint.onPaint = (mesh, colorName) => { room.onPaint(mesh, colorName, scene); gi.markDirty(); gi.setPanelColor(COLOR_HEX[colorName]); };
+  paint.onPaint = (mesh, colorName) => { room.onPaint(mesh, colorName, scene); gi.markDirty(); };
+
   // 조준 피드백: paintable을 겨누면 크로스헤어가 커지고 현재 색으로
   const crosshair = $('crosshair');
   paint.onAim = (aiming, colorName) => {
