@@ -1,5 +1,5 @@
 // src/room2.js
-// 방2: 파랑 다리 (방1 구조 재탕, 색·좌표 변경). DDGI 주입 대상 아님(방1 전용).
+// 방2: 파랑 다리 (방1 구조 재탕, 색·좌표 변경).
 import * as THREE from 'three/webgpu';
 import { COLORS } from './paint.js';
 
