@@ -17,7 +17,7 @@ const SH_COEFFS = 4;
 const NUM_RAYS = 16;
 const ALPHA = 0.08;
 const RAY_MAX = 40.0;
-const INJECT_STRENGTH = 0.7; // 간접광 주입 세기(흰 방이라 약하게 시작)
+const INJECT_STRENGTH = 1.1; // 간접광 주입 세기(흰 방이라 약하게 시작)
 
 // [cx,cy,cz, hx,hy,hz, r,g,b, isPanel]
 const BOXES = [
@@ -147,7 +147,7 @@ export class DDGI {
         const h = vec3(B[3], B[4], B[5]);
         const t = boxHit(ro, rd, c, h);
         const closer = t.lessThan(bestT);
-        const albedo = B[9] === 1 ? panelBuf.element(0) : vec3(B[6], B[7], B[8]);
+        const albedo = B[9] === 1 ? panelBuf.element(0).mul(1.8) : vec3(B[6], B[7], B[8]);
         col.assign(closer.select(albedo, col));
         bestT.assign(t.min(bestT));
       }
