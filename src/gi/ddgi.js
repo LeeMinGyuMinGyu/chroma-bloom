@@ -15,9 +15,9 @@ const GRID = { nx: 7, ny: 4, nz: 7 };
 const AREA = { min: new THREE.Vector3(-8, 0.4, -8), max: new THREE.Vector3(8, 5.4, 8) };
 const SH_COEFFS = 4;
 const NUM_RAYS = 16;
-const ALPHA = 0.08;
+const ALPHA = 0.04;
 const RAY_MAX = 40.0;
-const INJECT_STRENGTH = 1.1; // 간접광 주입 세기(흰 방이라 약하게 시작)
+const INJECT_STRENGTH = 0.85; // 간접광 주입 세기(흰 방이라 약하게 시작)
 
 // [cx,cy,cz, hx,hy,hz, r,g,b, isPanel]
 const BOXES = [
@@ -141,13 +141,13 @@ export class DDGI {
 
     const traceColor = (ro, rd) => {
       const bestT = float(RAY_MAX).toVar();
-      const col = vec3(0.04, 0.04, 0.05).toVar();
+      const col = vec3(0.0, 0.0, 0.0).toVar();
       for (const B of BOXES) {
         const c = vec3(B[0], B[1], B[2]);
         const h = vec3(B[3], B[4], B[5]);
         const t = boxHit(ro, rd, c, h);
         const closer = t.lessThan(bestT);
-        const albedo = B[9] === 1 ? panelBuf.element(0).mul(1.8) : vec3(B[6], B[7], B[8]);
+        const albedo = B[9] === 1 ? panelBuf.element(0).mul(1.3) : vec3(B[6], B[7], B[8]);
         col.assign(closer.select(albedo, col));
         bestT.assign(t.min(bestT));
       }
@@ -166,7 +166,7 @@ export class DDGI {
         float(MIN.z).add(iz.div(Math.max(1, NZ - 1)).mul(MAX.z - MIN.z)),
       );
 
-      const seed = pf.mul(1.7).add(uFrame.toFloat().mul(0.61803399));
+      const seed = pf.mul(1.7); // 프로브별 고정 오프셋(매 프레임 회전 제거 → 누적 안정)
 
       const acc = vec3(0.0).toVar();
       Loop(NR, ({ i }) => {
