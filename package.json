@@ -1,0 +1,10 @@
+{
+  "name": "chroma-bloom",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "물감으로 빛을 번지게 해 길을 여는 DDGI 퍼즐 (그래픽스 기말 과제 골격)",
+  "scripts": {
+    "serve": "npx --yes serve ."
+  }
+}

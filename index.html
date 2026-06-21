@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chroma Bloom</title>
+
+  <!-- Three.js (WebGPU build) via CDN. 버전 고정(r182) — 깨짐 방지. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.webgpu.js",
+      "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.webgpu.js",
+      "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.tsl.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.182.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #15131c;
+      --ink: #ece9f2;
+      --muted: #9a93a8;
+      --red: #ef7d7d;
+      --blue: #7da3ef;
+      --yellow: #efd97d;
+      --panel: rgba(20, 18, 28, 0.72);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg); color: var(--ink);
+      font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+    #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+    /* ---- crosshair ---- */
+    #crosshair { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px;
+      margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,0.85);
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.35); pointer-events: none; opacity: 0; transition: opacity .3s; }
+
+    /* ---- HUD ---- */
+    #hud { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .4s; }
+    #hint { position: absolute; top: 18px; left: 20px; font-size: 13px; letter-spacing: .02em;
+      color: var(--muted); line-height: 1.7; }
+    #hint b { color: var(--ink); font-weight: 600; }
+    #palette { position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 14px; }
+    .chip { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+      font-size: 12px; font-weight: 700; color: rgba(0,0,0,0.55);
+      outline: 2px solid transparent; outline-offset: 3px; transition: outline-color .15s, transform .15s; }
+    .chip[data-on="true"] { outline-color: rgba(255,255,255,0.9); transform: translateY(-3px); }
+    .chip.red { background: var(--red); }
+    .chip.blue { background: var(--blue); }
+    .chip.yellow { background: var(--yellow); }
+
+    /* ---- overlays ---- */
+    .overlay { position: fixed; inset: 0; display: grid; place-items: center; text-align: center;
+      background: var(--bg); z-index: 10; }
+    .stack { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+    .dots { display: flex; gap: 16px; }
+    .dot { width: 18px; height: 18px; border-radius: 50%; animation: bloom 1.2s ease-in-out infinite; }
+    .dot.red { background: var(--red); }
+    .dot.blue { background: var(--blue); animation-delay: .2s; }
+    .dot.yellow { background: var(--yellow); animation-delay: .4s; }
+    @keyframes bloom { 0%,100% { transform: scale(.6); opacity:.4; } 50% { transform: scale(1.15); opacity:1; } }
+    .title { font-size: 30px; font-weight: 700; letter-spacing: .06em; }
+    .sub { font-size: 14px; color: var(--muted); max-width: 420px; line-height: 1.7; }
+    .cta { pointer-events: auto; margin-top: 6px; padding: 12px 26px; border: 0; border-radius: 999px;
+      background: var(--ink); color: var(--bg); font-size: 14px; font-weight: 600; cursor: pointer; }
+    #notice { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 20;
+      display: none; max-width: 88vw; padding: 10px 16px; border-radius: 10px;
+      background: var(--panel); color: var(--ink); font-size: 13px; line-height: 1.5;
+      border: 1px solid rgba(255,255,255,0.08); }
+    .hidden { display: none !important; }
+    .win .title { color: var(--yellow); }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div id="crosshair"></div>
+
+  <div id="notice"></div>
+
+  <div id="hud">
+    <div id="hint">
+      <b>WASD</b> 이동 · <b>마우스</b> 시점 · <b>좌클릭</b> 칠하기<br />
+      색 선택: <b>1</b> 빨강 · <b>2</b> 파랑 · <b>3</b> 노랑
+    </div>
+    <div id="palette">
+      <div class="chip red" data-color="red" data-on="true">1</div>
+      <div class="chip blue" data-color="blue" data-on="false">2</div>
+      <div class="chip yellow" data-color="yellow" data-on="false">3</div>
+    </div>
+  </div>
+
+  <!-- start screen -->
+  <div id="loading" class="overlay">
+    <div class="stack">
+      <div class="dots"><span class="dot red"></span><span class="dot blue"></span><span class="dot yellow"></span></div>
+      <div class="title">CHROMA&nbsp;BLOOM</div>
+      <div class="sub">어두운 방을 물감으로 칠하면, 칠한 색이 빛으로 번져 길을 엽니다.<br />빨강을 정면 벽에 칠해 빛의 다리를 만들고 건너세요.</div>
+      <button id="startBtn" class="cta">시작하기</button>
+    </div>
+  </div>
+
+  <!-- win screen -->
+  <div id="win" class="overlay win hidden">
+    <div class="stack">
+      <div class="dots"><span class="dot yellow"></span><span class="dot red"></span><span class="dot blue"></span></div>
+      <div class="title">ROOM 1 CLEAR&nbsp;✶</div>
+      <div class="sub">빛의 다리를 건넜습니다. (다음 방은 색 조합 퍼즐로 확장하세요.)</div>
+    </div>
+  </div>
+
+  <!-- error screen -->
+  <div id="error" class="overlay hidden">
+    <div class="stack">
+      <div class="title">실행 오류</div>
+      <div class="sub" id="errorMsg"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
