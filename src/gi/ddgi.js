@@ -106,7 +106,7 @@ export class DDGI {
     this.shBuffer = instancedArray(count * SHC, 'vec3');
     const shBuf = this.shBuffer;
 
-    this.uPanel = uniform(new THREE.Vector3(0.93, 0.92, 0.94)); // 초기 패널색
+    this.uPanel = uniform(new THREE.Vector3(0.9, 0.1, 0.1)); // 진단: 처음부터 빨강 // 초기 패널색
     this.uFrame = uniform(0);
     const uPanel = this.uPanel, uFrame = this.uFrame;
 
