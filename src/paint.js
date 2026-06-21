@@ -1,33 +1,35 @@
 // src/paint.js
 import * as THREE from 'three/webgpu';
 
+export const COLOR_HEX = { red: '#ef7d7d', blue: '#7da3ef', yellow: '#efd97d' };
 export const COLORS = {
-  red:    new THREE.Color('#ef7d7d'),
-  blue:   new THREE.Color('#7da3ef'),
-  yellow: new THREE.Color('#efd97d'),
+  red: new THREE.Color(COLOR_HEX.red),
+  blue: new THREE.Color(COLOR_HEX.blue),
+  yellow: new THREE.Color(COLOR_HEX.yellow),
 };
-const REACH = 12; // 칠할 수 있는 최대 거리
+const REACH = 13; // 칠할 수 있는 최대 거리
 
 export class PaintSystem {
   constructor(camera, paintables) {
     this.camera = camera;
-    this.paintables = paintables;       // 칠할 수 있는 Mesh 배열
+    this.paintables = paintables;
     this.current = 'red';
     this.ray = new THREE.Raycaster();
     this.ray.far = REACH;
-    this.onPaint = null;                // (mesh, colorName) => void
+    this._center = new THREE.Vector2(0, 0);
+    this._aiming = null;
+    this.onPaint = null;
     this.onColorChange = null;
+    this.onAim = null;
 
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Digit1') this.setColor('red');
       else if (e.code === 'Digit2') this.setColor('blue');
       else if (e.code === 'Digit3') this.setColor('yellow');
     });
-
     document.addEventListener('mousedown', (e) => {
       if (e.button !== 0) return;
-      // 포인터 락 상태에서만 칠하기 (첫 클릭=락 획득은 칠하지 않음)
-      if (!document.pointerLockElement) return;
+      if (!document.pointerLockElement) return; // 첫 클릭(락 획득)은 칠하지 않음
       this.paintAtCenter();
     });
   }
@@ -36,12 +38,16 @@ export class PaintSystem {
     if (!COLORS[name] || this.current === name) return;
     this.current = name;
     this.onColorChange?.(name);
+    if (this._aiming) this.onAim?.(true, name); // 조준 중이면 크로스헤어 색 갱신
+  }
+
+  _aim() {
+    this.ray.setFromCamera(this._center, this.camera);
+    return this.ray.intersectObjects(this.paintables, false);
   }
 
   paintAtCenter() {
-    // 화면 정중앙(크로스헤어)에서 레이 발사
-    this.ray.setFromCamera(new THREE.Vector2(0, 0), this.camera);
-    const hits = this.ray.intersectObjects(this.paintables, false);
+    const hits = this._aim();
     if (hits.length === 0) return;
     const mesh = hits[0].object;
     mesh.material.color.copy(COLORS[this.current]);
@@ -49,5 +55,12 @@ export class PaintSystem {
     this.onPaint?.(mesh, this.current);
   }
 
-  update() { /* 매 프레임 동작 없음 (확장 여지) */ }
+  update() {
+    // 조준 상태 변화 시에만 콜백
+    const aiming = this._aim().length > 0;
+    if (aiming !== this._aiming) {
+      this._aiming = aiming;
+      this.onAim?.(aiming, this.current);
+    }
+  }
 }
