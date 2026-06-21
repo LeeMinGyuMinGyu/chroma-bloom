@@ -1,0 +1,77 @@
+// src/room3.js
+// 방3: 노랑 다리 (방1 구조 재탕, 색·좌표 변경). 마지막 방.
+import * as THREE from 'three/webgpu';
+import { COLORS } from './paint.js';
+
+function box(w, h, d, colorHex, opts = {}) {
+  const mat = new THREE.MeshStandardNodeMaterial({
+    color: new THREE.Color(colorHex),
+    roughness: opts.roughness ?? 0.95,
+    metalness: 0.0,
+  });
+  if (opts.emissive) { mat.emissive = new THREE.Color(opts.emissive); mat.emissiveIntensity = opts.emissiveIntensity ?? 0; }
+  return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+}
+
+export function setupRoom3(scene, camera) {
+  const group = new THREE.Group();
+  scene.add(group);
+
+  const FLOOR = '#d2cfd0', WALL = '#e0dcdc', PANEL = '#efece8';
+
+  const platA = box(18, 0.5, 7, FLOOR); platA.position.set(0, -0.25, -5.5); group.add(platA);
+  const platB = box(18, 0.5, 7, FLOOR); platB.position.set(0, -0.25, 5.5); group.add(platB);
+
+  const back  = box(20, 6, 0.4, WALL); back.position.set(0, 3, -9.2); group.add(back);
+  const front = box(20, 6, 0.4, WALL); front.position.set(0, 3, 9.2); group.add(front);
+  const left  = box(0.4, 6, 20, WALL); left.position.set(-9.2, 3, 0); group.add(left);
+  const right = box(0.4, 6, 20, WALL); right.position.set(9.2, 3, 0); group.add(right);
+  const ceil  = box(20, 0.4, 20, WALL); ceil.position.set(0, 6, 0); group.add(ceil);
+
+  // 노랑으로 칠하는 패널
+  const panel = box(6, 3, 0.3, PANEL, { roughness: 0.85 });
+  panel.position.set(0, 1.6, 2.0);
+  panel.userData.role = 'bridgeWall';
+  panel.userData.needColor = 'yellow';
+  group.add(panel);
+
+  const tiles = [];
+  for (const z of [-1.5, -0.5, 0.5, 1.5]) {
+    const t = box(4, 0.35, 0.9, '#dcd2b0', { emissive: '#efd97d', emissiveIntensity: 0 });
+    t.position.set(0, 0.0, z); t.visible = false; group.add(t); tiles.push(t);
+  }
+
+  const exit = box(2.4, 0.08, 2.4, '#eeeae0', { emissive: '#efd97d', emissiveIntensity: 0.6 });
+  exit.position.set(0, 0.05, 6.5); group.add(exit);
+
+  const state = { bridgeActive: false, cleared: false, _glow: 0 };
+
+  function onPaint(mesh, colorName) {
+    if (mesh.userData.role === 'bridgeWall' && colorName === 'yellow' && !state.bridgeActive) {
+      state.bridgeActive = true;
+      mesh.material.emissive = new THREE.Color(COLORS.yellow);
+      mesh.material.emissiveIntensity = 0.8;
+      tiles.forEach((t) => { t.visible = true; });
+    }
+  }
+
+  function update(dt) {
+    if (state.bridgeActive && state._glow < 1) {
+      state._glow = Math.min(1, state._glow + dt * 1.5);
+      const g = state._glow;
+      tiles.forEach((t) => { t.material.emissiveIntensity = 1.3 * g; });
+    }
+    if (!state.cleared && state.bridgeActive && camera) {
+      const p = camera.position;
+      if (p.z > 2 && Math.hypot(p.x - exit.position.x, p.z - exit.position.z) < 1.8) state.cleared = true;
+    }
+  }
+
+  return {
+    group, paintables: [panel],
+    spawn: { x: 0, z: -6 },
+    bounds: { minX: -8, maxX: 8, minZ: -8.5, maxZ: 8.5 },
+    gap: { from: -2, to: 2, halfWidth: 2 },
+    state, onPaint, update,
+  };
+}
