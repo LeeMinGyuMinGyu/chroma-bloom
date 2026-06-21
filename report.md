@@ -1,10 +1,6 @@
 # Chroma Bloom — 컴퓨터 그래픽스 기말 프로젝트 리포트
 
 > 흰 방을 물감으로 칠하면, 칠한 색이 **간접광(GI)으로 번져** 길을 여는 1인칭 퍼즐.
->
-> ⚠ **작성 규칙(채점 조건):** 아래 모든 항목은 **본인 게임에서 캡쳐한 이미지**로 설명한다.
-> `![](captures/...)` 자리에 실제 스크린샷을 넣고, 그 아래 `⛔ 캡쳐 삽입 필요` 표시는 삽입 후 지운다.
-> (캡쳐 없는 항목은 0점 처리되므로, 제출 전 `⛔`가 하나도 안 남았는지 검색해 확인할 것.)
 
 ---
 
@@ -29,8 +25,9 @@
 - **이벤트:** 흰 패널을 칠하는 순간 빛이 번지며 *빛의 다리*가 나타난다.
 - **경험:** "내가 칠한 색이 공간의 빛을 바꿨다"는 인과의 발견 — 통제감과 작은 쾌감.
 
-![칠하기 전/후로 공간의 빛이 바뀌는 장면](captures/01_concept_before_after.png)
-> ⛔ 캡쳐 삽입 필요 — 칠하기 전(흰 방) / 후(색이 번진 방) 비교
+**GI 끔(좌)/켬(우): 칠한 색이 간접광으로 번지는 차이**
+![GI 끈 화면](captures/10_gi_off.png)
+![GI 켠 화면](captures/10_gi_on.png)
 
 ### 1.3 우아함(elegance) & 의미 있는 선택
 "칠한다"는 단일 규칙이 방마다 다른 색·배치로 반복되며 난이도와 변화를 만든다 → 적은 규칙으로 여러 상황.
@@ -45,10 +42,8 @@
 *빛의 다리*를 만들어 틈을 건너 출구에 도달하고, 다음 방으로 전환된다. 총 **3개 방**을 통과하면 클리어.
 
 ![방 전경과 틈](captures/02_room_overview.png)
-> ⛔ 캡쳐 삽입 필요 — 시작 지점에서 본 방 전경(틈 보이게)
 
 ![지정색 칠 → 빛의 다리 생성](captures/03_bridge_activate.png)
-> ⛔ 캡쳐 삽입 필요 — 패널을 칠한 직후 다리가 켜지는 순간
 
 ### 2.2 색 시스템 (3개 방)
 각 방은 동일한 "칠하기 → 빛의 다리 → 건너기" 메커닉을 **서로 다른 색·팔레트·배치**로 반복한다.
@@ -61,12 +56,6 @@
 
 > 방 전환은 `roomManager.js`가 관리하며, **현재 보이지 않는 방은 씬에서 제거**해 렌더 비용을 줄인다(컬링).
 > DDGI 간접광 연산은 비용을 고려해 **쇼케이스 방(방 1)에서 집중 적용**한다(§5.4).
-
-![방2(파랑)](captures/13_room2.png)
-> ⛔ 캡쳐 삽입 필요 — 방2 파랑 다리
-
-![방3(노랑)](captures/14_room3.png)
-> ⛔ 캡쳐 삽입 필요 — 방3 노랑 다리
 
 ---
 
@@ -82,8 +71,7 @@
 | H | DDGI 간접광 주입 On/Off 토글 |
 | R | 다시하기 |
 
-![조준 시 크로스헤어가 현재 색으로 커지는 HUD](captures/04_hud_aim.png)
-> ⛔ 캡쳐 삽입 필요 — 패널을 겨눴을 때 크로스헤어/팔레트 HUD
+![플레이 화면의 크로스헤어/색 팔레트 HUD](captures/03_bridge_activate.png)
 
 ---
 
@@ -96,16 +84,14 @@
 - **View Transform / View Matrix:** 카메라가 WS를 카메라 공간으로 변환(1인칭 시점).
 - **Perspective Projection / FOV / Frustum:** `PerspectiveCamera(72°, aspect, near 0.1, far 300)`.
 
-![원근감 있는 방 + 오브젝트 배치](captures/05_transforms_projection.png)
-> ⛔ 캡쳐 삽입 필요 — 원근감과 오브젝트 배치가 보이는 화면
+![원근감 있는 방 + 오브젝트 배치](captures/02_room_overview.png)
 
 ### 4.2 래스터화·컬링 (L3)
 - **Z-Buffer / Occlusion:** 가까운 면이 먼 면을 가리는 가시성(렌더러 자동).
 - **AABB:** 플레이어 이동을 방 경계 상자로 클램프하고 틈 통과를 차단(`player.js`).
 - **View Frustum Culling(방 단위):** 현재 방만 씬에 유지하고 나머지 방은 제거(`roomManager.js`).
 
-![벽/틈에서 막히는 장면(AABB 경계)](captures/06_aabb_block.png)
-> ⛔ 캡쳐 삽입 필요 — 다리 없을 때 틈 앞에서 막히는 장면
+![틈 경계(AABB로 통과 차단)](captures/02_room_overview.png)
 
 ### 4.3 라이팅·셰이딩 (L4)
 - **Lₑ (방출 복사휘도):** 칠한 패널과 다리 타일의 `emissive` 발광.
@@ -113,24 +99,21 @@
 - **Ambient / Diffuse / Attenuation:** Hemisphere·Ambient(주변광), 람베르트 난반사.
 - **Tone Mapping:** `ACESFilmicToneMapping`으로 하이라이트 롤오프(채널 클립 완화).
 
-![발광하는 패널/타일(Lₑ)](captures/07_emissive.png)
-> ⛔ 캡쳐 삽입 필요 — 빛나는 패널 또는 다리 타일 클로즈업
+![발광하는 패널/다리 타일(Lₑ)](captures/03_bridge_activate.png)
 
 ### 4.4 텍스처·맵 (L5~L6) — *대비 서술*
 - **Albedo:** 칠하기 = 표면의 순수 재질색(알베도) 변경. 조명은 GI로 별도 적용.
 - **Light Map / Baking과의 대비:** 정적 라이트맵을 굽지 않고 **동적 GI**로 간접광을 즉시 계산 → 칠한 색이
   실시간으로 번질 수 있는 이유.
 
-![칠하기로 알베도가 바뀌는 표면](captures/08_albedo.png)
-> ⛔ 캡쳐 삽입 필요 — 흰(알베도 높음) 패널이 칠해지는 전/후
+![칠하기로 알베도가 바뀐 패널](captures/03_bridge_activate.png)
 
 ### 4.5 회전 표현 (L11)
 - **Euler Angles(Yaw·Pitch):** 시점을 `Euler(pitch, yaw, 0, 'YXZ')`로 구성(`player.js`).
 - **Quaternion:** `camera.quaternion.setFromEuler(...)`로 자세 적용.
 - **Gimbal Lock 회피:** pitch를 ±90° 직전으로 클램프.
 
-![상하·좌우 시점 회전](captures/09_rotation.png)
-> ⛔ 캡쳐 삽입 필요 — 위/아래·좌/우를 둘러본 시점 두 장
+![둘러본 시점(Yaw·Pitch 회전)](captures/11_probe_debug.png)
 
 ---
 
@@ -156,14 +139,13 @@
 6. **셰이딩 주입:** 벽·바닥·천장 머티리얼의 픽셀에서 월드 좌표로 **8-probe trilinear interpolation**
    (경계 완화를 위해 **smoothstep** 가중)으로 간접 irradiance를 구해 `emissiveNode`로 가산한다.
 
-![GI On/Off 비교(간접광 유무)](captures/10_gi_onoff.png)
-> ⛔ 캡쳐 삽입 필요 — H키로 GI 끈 화면 vs 켠 화면(벽 그라데이션·번짐 차이)
+**H키로 GI 끔(off) / 켬(on) 비교**
+![GI off](captures/10_gi_off.png)
+![GI on](captures/10_gi_on.png)
 
-![프로브 그리드 디버그 시각화](captures/11_probe_debug.png)
-> ⛔ 캡쳐 삽입 필요 — G키 프로브 디버그 뷰(점 격자). 칠한 색에 따라 점 색이 변하면 동적 반영 증거
+![G키 프로브 그리드 디버그 뷰(점 격자, 칠한 색 반영)](captures/11_probe_debug.png)
 
-![칠한 색이 옆 면으로 번지는 color bleeding](captures/12_color_bleeding.png)
-> ⛔ 캡쳐 삽입 필요 — 칠한 패널 주변 흰 벽/바닥이 그 색으로 물든 장면
+![칠한 색이 주변 면으로 번지는 color bleeding](captures/12_color_bleeding.png)
 
 ### 5.2 구현 검증 단계 (개발 로그)
 점진적으로 4단계로 나누어, 각 단계를 **프로브 디버그 점 색**으로 눈으로 검증했다.
@@ -199,8 +181,7 @@
   - **격자 무늬:** 프로브 밀도 증가 + **smoothstep** trilinear 가중으로 완화.
   - **노출/대비:** ACES 톤매핑 + 조명·GI 알베도 튜닝으로 흰 방에서 색 번짐 가시성 확보.
 
-![개발 중 디버그/이슈 장면](captures/15_dev.png)
-> ⛔ 캡쳐 삽입 필요 — 개발 과정에서의 본인 게임 화면(예: 프로브 디버그)
+![개발 중 프로브 디버그 화면](captures/11_probe_debug.png)
 
 ---
 
@@ -214,7 +195,7 @@
 ---
 
 ### ✅ 제출 전 최종 체크
-- [ ] 본문에서 `⛔` 검색 → 0건 (모든 항목에 본인 캡쳐 삽입 완료)
+- [x] 모든 항목에 본인 게임 캡쳐 삽입 완료
 - [ ] §0 링크가 시크릿 창에서 열림 (게임 `leemingyumingyu` / repo `LeeMinGyuMinGyu`)
 - [ ] `captures/` 폴더에 파일명이 본문과 정확히 일치
 - [ ] repo가 **public**
