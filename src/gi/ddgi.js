@@ -230,13 +230,11 @@ export class DDGI {
     // 대상: 큰 디퓨즈 면(바닥/벽/천장). emissive 역할이 있는 것(타일/출구/패널)은 제외.
     let n = 0;
     this.scene.traverse((o) => {
-      if (!o.isMesh || o === this.debugMesh) return;
+      if (!o.isMesh) return;
+      if (!(o.userData && o.userData.gi)) return;   // gi 태그 면만 주입(바닥/벽/천장)
       const m = o.material;
-      if (!m || !m.isMeshStandardNodeMaterial) return;
-      if (o.userData && o.userData.role) return;           // 패널 등 제외
-      if (m.emissive && (m.emissive.r + m.emissive.g + m.emissive.b) > 0) return; // 타일/출구 제외
-      if (m.emissiveIntensity && m.emissiveIntensity > 0) return;
-      m.emissiveNode = indirect; // 기존 직접광 위에 간접광 가산
+      if (!m) return;
+      m.emissiveNode = indirect;                    // 기존 직접광 위에 간접광 가산
       m.needsUpdate = true;
       n++;
     });
