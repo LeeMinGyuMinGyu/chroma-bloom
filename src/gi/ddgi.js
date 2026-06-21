@@ -11,7 +11,7 @@
 import * as THREE from 'three/webgpu';
 import { Fn, instancedArray, storage, instanceIndex, vec3, float, Loop, uniform, positionWorld } from 'three/tsl';
 
-const GRID = { nx: 9, ny: 5, nz: 9 };
+const GRID = { nx: 12, ny: 7, nz: 12 };
 const AREA = { min: new THREE.Vector3(-8, 0.4, -8), max: new THREE.Vector3(8, 5.4, 8) };
 const SH_COEFFS = 4;
 const NUM_RAYS = 16;
@@ -155,7 +155,7 @@ export class DDGI {
         const h = vec3(B[3], B[4], B[5]);
         const t = boxHit(ro, rd, c, h);
         const closer = t.lessThan(bestT);
-        const albedo = B[9] === 1 ? panelBuf.element(0).mul(2.2) : vec3(B[6], B[7], B[8]);
+        const albedo = B[9] === 1 ? panelBuf.element(0).mul(1.5) : vec3(B[6], B[7], B[8]);
         col.assign(closer.select(albedo, col));
         bestT.assign(t.min(bestT));
       }
@@ -185,7 +185,7 @@ export class DDGI {
         const dir = vec3(phi.cos().mul(r), z, phi.sin().mul(r));
         acc.addAssign(traceColor(ro, dir));
       });
-      const sampled = acc.div(float(NR));
+      const sampled = acc.div(float(NR)).clamp(0.0, 1.0); // 폭주(채널 초과) 차단 → 깜빡임 방지
 
       const base = instanceIndex.mul(SHC);
       const oldDC = shBuf.element(base);
