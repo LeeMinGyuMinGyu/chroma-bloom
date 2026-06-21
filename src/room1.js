@@ -21,14 +21,14 @@ export function setupRoom1(scene, camera) {
 
   const FLOOR = '#cfccd6', WALL = '#dcd9e3', PANEL = '#eceaf0';
 
-  const platA = box(18, 0.5, 7, FLOOR); platA.position.set(0, -0.25, -5.5); group.add(platA);
-  const platB = box(18, 0.5, 7, FLOOR); platB.position.set(0, -0.25, 5.5); group.add(platB);
+  const platA = box(18, 0.5, 7, FLOOR); platA.position.set(0, -0.25, -5.5); platA.userData.gi = true; group.add(platA);
+  const platB = box(18, 0.5, 7, FLOOR); platB.position.set(0, -0.25, 5.5); platB.userData.gi = true; group.add(platB);
 
-  const back  = box(20, 6, 0.4, WALL); back.position.set(0, 3, -9.2); group.add(back);
-  const front = box(20, 6, 0.4, WALL); front.position.set(0, 3, 9.2); group.add(front);
-  const left  = box(0.4, 6, 20, WALL); left.position.set(-9.2, 3, 0); group.add(left);
-  const right = box(0.4, 6, 20, WALL); right.position.set(9.2, 3, 0); group.add(right);
-  const ceil  = box(20, 0.4, 20, WALL); ceil.position.set(0, 6, 0); group.add(ceil);
+  const back  = box(20, 6, 0.4, WALL); back.position.set(0, 3, -9.2); back.userData.gi = true; group.add(back);
+  const front = box(20, 6, 0.4, WALL); front.position.set(0, 3, 9.2); front.userData.gi = true; group.add(front);
+  const left  = box(0.4, 6, 20, WALL); left.position.set(-9.2, 3, 0); left.userData.gi = true; group.add(left);
+  const right = box(0.4, 6, 20, WALL); right.position.set(9.2, 3, 0); right.userData.gi = true; group.add(right);
+  const ceil  = box(20, 0.4, 20, WALL); ceil.position.set(0, 6, 0); ceil.userData.gi = true; group.add(ceil);
 
   const panel = box(6, 3, 0.3, PANEL, { roughness: 0.85 });
   panel.position.set(0, 1.6, 2.0);
