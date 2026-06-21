@@ -38,8 +38,7 @@ async function start() {
   const gi = new DDGI(renderer, scene, camera, { enabled: hasWebGPU });
   await gi.init();
 
-  paint.onPaint = (mesh, colorName) => { room.onPaint(mesh, colorName, scene); gi.markDirty(); };
-
+  paint.onPaint = (mesh, colorName) => { room.onPaint(mesh, colorName, scene); gi.markDirty(); gi.setPanelColor(COLOR_HEX[colorName]); };
   // 조준 피드백: paintable을 겨누면 크로스헤어가 커지고 현재 색으로
   const crosshair = $('crosshair');
   paint.onAim = (aiming, colorName) => {
