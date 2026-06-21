@@ -14,18 +14,21 @@ async function start() {
   const renderer = new THREE.WebGPURenderer({ canvas, antialias: true, forceWebGL: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; // 색 클립 완화·자연스러운 하이라이트
+  renderer.toneMappingExposure = 1.35;                 // ACES가 누르는 만큼 노출 보정
   await renderer.init();
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#101019');
+  scene.background = new THREE.Color('#0e0d18');
+  // 안개: 먼 벽이 배경색으로 부드럽게 녹아 깊이감↑ (near~far 사이에서 페이드)
+  scene.fog = new THREE.Fog('#0e0d18', 18, 46);
 
   const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 300);
 
   // --- 라이팅(낮춰서 GI 간접광이 보일 여유 확보) ---
-  scene.add(new THREE.AmbientLight('#ffffff', 0.35));
-  scene.add(new THREE.HemisphereLight('#eaf0ff', '#3a3640', 0.55));
-  const sun = new THREE.DirectionalLight('#fff4e6', 1.1);
+  scene.add(new THREE.AmbientLight('#fff6ee', 0.5));
+  scene.add(new THREE.HemisphereLight('#eaf0ff', '#2c2838', 0.7));
+  const sun = new THREE.DirectionalLight('#fff4e6', 1.4);
   sun.position.set(4, 8, 2); scene.add(sun);
 
   // --- 플레이어 / 칠하기 ---
